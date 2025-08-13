@@ -1,0 +1,5 @@
+{
+  "name": "Flux IDE",
+  "description": "A modern, cross-platform code editor inspired by VS Code, featuring a unique 'Adaptive Performance' system. It automatically switches between a lightweight mode for low-resource systems and a full-featured mode for powerful machines, ensuring optimal performance for every user. Includes an AI-powered code assistant.",
+  "requestFramePermissions": []
+}
