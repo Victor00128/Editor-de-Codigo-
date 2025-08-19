@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Custom focus styles */
+.focus-ring {
+  @apply focus:outline-none;
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+.terminal-cursor::after {
+  content: '|';
+  animation: blink 1s infinite;
+}
+
+/* File explorer tree lines */
+.tree-line {
+  position: relative;
+}
+
+.tree-line::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(156, 163, 175, 0.2);
+}
+
+.tree-line:last-child::before {
+  bottom: 50%;
+}
+
+  /* Git status indicators */
+  .git-status-added {
+    color: #10b981;
+    background-color: rgba(16, 185, 129, 0.1);
+  }
+
+.git-status-modified {
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.git-status-untracked {
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Search highlight */
+.search-highlight {
+  background-color: #fde047;
+  color: #000000;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.dark .search-highlight {
+  background-color: #ca8a04;
+  color: #ffffff;
+}
+
+/* Code editor improvements */
+.code-editor {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .sidebar {
+    @apply w-48;
+  }
+  
+  .activity-bar {
+    @apply w-10;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    @apply w-40;
+  }
+  
+  .activity-bar {
+    @apply w-8;
+  }
+}
+
+/* Dark mode improvements */
+.dark {
+  color-scheme: dark;
+}
+
+/* Accessibility improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus visible for keyboard navigation */
+.focus-visible:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Loading states */
+.loading {
+  @apply animate-pulse bg-gray-200 dark:bg-gray-700;
+}
+
+/* Success states */
+.success {
+  @apply text-green-600 dark:text-green-400;
+}
+
+/* Error states */
+.error {
+  @apply text-red-600 dark:text-red-400;
+}
+
+/* Warning states */
+.warning {
+  @apply text-yellow-600 dark:text-yellow-400;
+}
+
+/* Info states */
+.info {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+
+
