@@ -143,11 +143,12 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search files..."
-                        className="flex-1 bg-transparent text-dark-text dark:text-dark-text focus:outline-none"
+                        className="flex-1 px-3 py-2 bg-light-bg dark:bg-dark-bg border-2 border-dark-accent/40 rounded-md text-dark-text dark:text-dark-text focus:outline-none focus:border-dark-accent transition-colors"
                     />
                     <button
                         onClick={() => setShowReplace(!showReplace)}
                         className="px-3 py-2 bg-dark-accent/20 hover:bg-dark-accent/30 rounded-md text-dark-text dark:text-dark-text transition-colors"
+                        title={showReplace ? "Hide replace" : "Show replace"}
                     >
                         <ReplaceIcon className="w-4 h-4" />
                     </button>
@@ -161,7 +162,7 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
                             value={replaceTerm}
                             onChange={(e) => setReplaceTerm(e.target.value)}
                             placeholder="Replace with..."
-                            className="flex-1 px-3 py-2 bg-light-bg dark:bg-dark-bg border border-dark-accent/30 rounded-md text-dark-text dark:text-dark-text focus:outline-none"
+                            className="flex-1 px-3 py-2 bg-light-bg dark:bg-dark-bg border-2 border-dark-accent/40 rounded-md text-dark-text dark:text-dark-text focus:outline-none focus:border-dark-accent transition-colors"
                         />
                         <button
                             onClick={handleReplaceAll}
@@ -181,7 +182,7 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
                             onChange={(e) => setSearchInContent(e.target.checked)}
                             className="rounded"
                         />
-                        <span>Search in content</span>
+                        <span>Search in file content</span>
                     </label>
                     <label className="flex items-center space-x-2">
                         <input
@@ -190,7 +191,7 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
                             onChange={(e) => setUseRegex(e.target.checked)}
                             className="rounded"
                         />
-                        <span>Use regex</span>
+                        <span>Use regular expressions</span>
                     </label>
                     <label className="flex items-center space-x-2">
                         <input
@@ -199,7 +200,7 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
                             onChange={(e) => setCaseSensitive(e.target.checked)}
                             className="rounded"
                         />
-                        <span>Case sensitive</span>
+                        <span>Match case exactly</span>
                     </label>
                 </div>
             </div>

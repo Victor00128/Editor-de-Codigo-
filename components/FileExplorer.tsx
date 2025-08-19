@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { FileSystemNode, File, Folder } from '../types';
 import { 
     FileIcon, FolderIcon, ChevronRightIcon, ChevronDownIcon, 
@@ -297,6 +297,68 @@ export default function FileExplorer({
         setNewItemModal(null);
     }, [newItemModal, onNewItem, onFileClick]);
 
+    const handleContextMenuAction = useCallback((action: string, node: FileSystemNode) => {
+        closeContextMenu();
+        
+        switch (action) {
+            case 'newFile':
+                if (node.type === 'folder') {
+                    handleNewItemClick('file', node.id, node.name);
+                } else {
+                    // Si es un archivo, crear en el mismo nivel
+                    const parentNode = findParentNode(fileSystem, node.id);
+                    handleNewItemClick('file', parentNode?.id || null, parentNode?.name);
+                }
+                break;
+            case 'newFolder':
+                if (node.type === 'folder') {
+                    handleNewItemClick('folder', node.id, node.name);
+                } else {
+                    // Si es un archivo, crear en el mismo nivel
+                    const parentNode = findParentNode(fileSystem, node.id);
+                    handleNewItemClick('folder', parentNode?.id || null, parentNode?.name);
+                }
+                break;
+            case 'rename':
+                startRename(node);
+                break;
+            case 'duplicate':
+                onDuplicate(node.id);
+                break;
+            case 'delete':
+                onDelete(node.id);
+                break;
+        }
+    }, [closeContextMenu, handleNewItemClick, startRename, onDuplicate, onDelete, fileSystem]);
+
+    // Función auxiliar para encontrar el nodo padre
+    const findParentNode = (nodes: FileSystemNode[], targetId: string): FileSystemNode | null => {
+        for (const node of nodes) {
+            if (node.type === 'folder' && node.children.some(child => child.id === targetId)) {
+                return node;
+            }
+            if (node.type === 'folder') {
+                const found = findParentNode(node.children, targetId);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+
+    // Cerrar el menú contextual cuando se hace clic fuera
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (contextMenu) {
+                closeContextMenu();
+            }
+        };
+
+        if (contextMenu) {
+            document.addEventListener('click', handleClickOutside);
+            return () => document.removeEventListener('click', handleClickOutside);
+        }
+    }, [contextMenu, closeContextMenu]);
+
     return (
         <div className="h-full flex flex-col">
             {/* Header */}
@@ -332,52 +394,33 @@ export default function FileExplorer({
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                 >
                     <button
-                        onClick={() => {
-                            if (contextMenu.node.type === 'folder') {
-                                handleNewItemClick('file', contextMenu.node.id, contextMenu.node.name);
-                            }
-                            closeContextMenu();
-                        }}
+                        onClick={() => handleContextMenuAction('newFile', contextMenu.node)}
                         className="w-full px-4 py-2 text-left text-dark-text dark:text-dark-text hover:bg-dark-accent/20 text-sm"
                     >
                         New File
                     </button>
-                    {contextMenu.node.type === 'folder' && (
-                        <button
-                            onClick={() => {
-                                handleNewItemClick('folder', contextMenu.node.id, contextMenu.node.name);
-                                closeContextMenu();
-                            }}
-                            className="w-full px-4 py-2 text-left text-dark-text dark:text-dark-text hover:bg-dark-accent/20 text-sm"
-                        >
-                            New Folder
-                        </button>
-                    )}
+                    <button
+                        onClick={() => handleContextMenuAction('newFolder', contextMenu.node)}
+                        className="w-full px-4 py-2 text-left text-dark-text dark:text-dark-text hover:bg-dark-accent/20 text-sm"
+                    >
+                        New Folder
+                    </button>
                     <div className="border-t border-dark-accent/20 my-1" />
                     <button
-                        onClick={() => {
-                            startRename(contextMenu.node);
-                            closeContextMenu();
-                        }}
+                        onClick={() => handleContextMenuAction('rename', contextMenu.node)}
                         className="w-full px-4 py-2 text-left text-dark-text dark:text-dark-text hover:bg-dark-accent/20 text-sm"
                     >
                         Rename
                     </button>
                     <button
-                        onClick={() => {
-                            onDuplicate(contextMenu.node.id);
-                            closeContextMenu();
-                        }}
+                        onClick={() => handleContextMenuAction('duplicate', contextMenu.node)}
                         className="w-full px-4 py-2 text-left text-dark-text dark:text-dark-text hover:bg-dark-accent/20 text-sm"
                     >
                         Duplicate
                     </button>
                     <div className="border-t border-dark-accent/20 my-1" />
                     <button
-                        onClick={() => {
-                            onDelete(contextMenu.node.id);
-                            closeContextMenu();
-                        }}
+                        onClick={() => handleContextMenuAction('delete', contextMenu.node)}
                         className="w-full px-4 py-2 text-left text-red-500 hover:bg-red-500/20 text-sm"
                     >
                         Delete

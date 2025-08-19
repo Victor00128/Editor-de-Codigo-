@@ -11,8 +11,7 @@ import DebugView from './components/DebugView';
 import ExtensionsView from './components/ExtensionsView';
 import { ContextMenu, AboutModal, CommandPalette } from './components/Menus';
 import { 
-    FileExplorerIcon, SearchIcon, GitIcon, DebugIcon, ExtensionsIcon, TerminalIcon, CloseIcon, 
-    SunIcon, MoonIcon
+    FileExplorerIcon, SearchIcon, GitIcon, DebugIcon, ExtensionsIcon, TerminalIcon, CloseIcon
 } from './components/icons';
 import { useFileSystem } from './hooks/useFileSystem';
 import { useTerminal } from './hooks/useTerminal';
@@ -22,20 +21,15 @@ import { useOpenFiles } from './hooks/useOpenFiles';
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [theme, setTheme] = useState<Theme>('dark');
+    const [theme] = useState<Theme>('dark');
 
     useEffect(() => {
         const root = window.document.documentElement;
-        const isDark = theme === 'dark';
-        root.classList.toggle('dark', isDark);
-        root.style.backgroundColor = isDark ? '#1e1e1e' : '#f5f5f5';
-    }, [theme]);
-
-    const toggleTheme = useCallback(() => {
-        setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+        root.classList.add('dark');
+        root.style.backgroundColor = '#1e1e1e';
     }, []);
 
-    const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
+    const value = useMemo(() => ({ theme }), [theme]);
 
     return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
@@ -135,7 +129,7 @@ const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ history, onComm
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
-    const { theme, toggleTheme } = useTheme();
+    const { theme } = useTheme();
     const [activeView, setActiveView] = useState<ActivityBarView>(ActivityBarView.EXPLORER);
     const [isTerminalOpen, setTerminalOpen] = useState(false);
     const [isSidebarVisible, setSidebarVisible] = useState(true);
@@ -291,13 +285,12 @@ const App: React.FC = () => {
     const changedFiles = useMemo(() => getGitStatus(), [getGitStatus]);
 
     const commands: Command[] = useMemo(() => [
-        { id: 'toggleTheme', label: 'Theme: Toggle Light/Dark Mode', action: toggleTheme, keywords: 'color theme mode dark light change' },
         { id: 'toggleSidebar', label: 'View: Toggle Sidebar', action: () => setSidebarVisible(v => !v), keywords: 'explorer files hide show panel' },
         { id: 'toggleTerminal', label: 'View: Toggle Terminal', action: () => setTerminalOpen(v => !v), keywords: 'console command line cmd' },
         { id: 'newFile', label: 'File: New File (Root)', action: () => handleNewItemLocal(null, 'file'), keywords: 'create add' },
         { id: 'saveFile', label: 'File: Save Active File', action: handleSaveFileLocal, keywords: 'persist write disk' },
         { id: 'showAbout', label: 'Help: About Nexus Code', action: () => setAboutModalOpen(true), keywords: 'version info help' },
-    ], [toggleTheme, handleNewItemLocal, handleSaveFileLocal]);
+    ], [handleNewItemLocal, handleSaveFileLocal]);
 
     const activeFile = getActiveFile();
 
@@ -308,16 +301,13 @@ const App: React.FC = () => {
         >
             <div className="flex flex-1 overflow-hidden">
                 {/* Activity Bar */}
-                <div className="w-12 bg-light-bg-alt dark:bg-dark-bg flex flex-col justify-between items-center py-4">
+                <div className="w-12 bg-light-bg-alt dark:bg-dark-bg flex flex-col justify-center items-center py-4">
                     <div className="flex flex-col items-center space-y-2">
                         <ActivityBarIcon icon={<FileExplorerIcon />} label="Explorer" isActive={activeView === ActivityBarView.EXPLORER} onClick={() => setActiveView(ActivityBarView.EXPLORER)} />
                         <ActivityBarIcon icon={<SearchIcon />} label="Search" isActive={activeView === ActivityBarView.SEARCH} onClick={() => setActiveView(ActivityBarView.SEARCH)} />
                         <ActivityBarIcon icon={<GitIcon />} label="Source Control" isActive={activeView === ActivityBarView.GIT} onClick={() => setActiveView(ActivityBarView.GIT)} />
                         <ActivityBarIcon icon={<DebugIcon />} label="Run and Debug" isActive={activeView === ActivityBarView.DEBUG} onClick={() => setActiveView(ActivityBarView.DEBUG)} />
                         <ActivityBarIcon icon={<ExtensionsIcon />} label="Extensions" isActive={activeView === ActivityBarView.EXTENSIONS} onClick={() => setActiveView(ActivityBarView.EXTENSIONS)} />
-                    </div>
-                    <div className="flex flex-col items-center space-y-2">
-                        <ActivityBarIcon icon={theme === 'dark' ? <SunIcon /> : <MoonIcon />} label="Toggle Theme" isActive={false} onClick={toggleTheme} />
                     </div>
                 </div>
 
