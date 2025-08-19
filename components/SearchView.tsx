@@ -4,20 +4,23 @@ import {
     FileIcon, TypescriptIcon, JsIcon, CssIcon, HtmlIcon, JsonIcon, ReactIcon,
     SearchIcon, ReplaceIcon, PlusIcon, MinusIcon
 } from './icons';
+import { replaceInText, buildSearchPattern } from '../utils/editorText';
 
 interface SearchViewProps {
     fileSystem: any[];
     theme: Theme;
     onFileOpen: (file: File) => void;
+    onReplaceContent?: (fileId: string, newContent: string) => void;
 }
 
-const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }) => {
+const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen, onReplaceContent }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [replaceTerm, setReplaceTerm] = useState('');
     const [searchInContent, setSearchInContent] = useState(true);
     const [useRegex, setUseRegex] = useState(false);
     const [caseSensitive, setCaseSensitive] = useState(false);
     const [showReplace, setShowReplace] = useState(false);
+    const [wholeWord, setWholeWord] = useState(false);
 
     const searchFiles = useCallback((term: string) => {
         if (!term.trim()) return [];
@@ -87,17 +90,11 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
 
     const highlightMatches = (text: string, term: string) => {
         if (!term || !text) return text;
-        
-        if (useRegex) {
-            try {
-                const regex = new RegExp(`(${term})`, caseSensitive ? 'g' : 'gi');
-                return text.replace(regex, '<mark class="bg-yellow-300 dark:bg-yellow-600">$1</mark>');
-            } catch (e) {
-                return text;
-            }
-        } else {
-            const regex = new RegExp(`(${term})`, caseSensitive ? 'gi' : 'gi');
-            return text.replace(regex, '<mark class="bg-yellow-300 dark:bg-yellow-600">$1</mark>');
+        try {
+            const pattern = buildSearchPattern(term, { useRegex, caseSensitive, wholeWord });
+            return text.replace(pattern, '<mark class="bg-yellow-300 dark:bg-yellow-600">$&</mark>');
+        } catch {
+            return text;
         }
     };
 
@@ -119,18 +116,30 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
     };
 
     const handleReplace = useCallback((file: File) => {
-        if (!searchTerm || !replaceTerm) return;
-        
-        // This would need to be integrated with the file system hook
-        alert(`Replace functionality would be implemented here for ${file.name}`);
-    }, [searchTerm, replaceTerm]);
+        if (!searchTerm || !replaceTerm || !onReplaceContent) return;
+        const newContent = replaceInText(
+            file.content,
+            searchTerm,
+            replaceTerm,
+            { useRegex, caseSensitive, wholeWord }
+        );
+        onReplaceContent(file.id, newContent);
+    }, [searchTerm, replaceTerm, onReplaceContent, useRegex, caseSensitive, wholeWord]);
 
     const handleReplaceAll = useCallback(() => {
-        if (!searchTerm || !replaceTerm) return;
-        
-        // This would need to be integrated with the file system hook
-        alert(`Replace all functionality would be implemented here`);
-    }, [searchTerm, replaceTerm]);
+        if (!searchTerm || !replaceTerm || !onReplaceContent) return;
+        searchResults.forEach((file) => {
+            const newContent = replaceInText(
+                file.content,
+                searchTerm,
+                replaceTerm,
+                { useRegex, caseSensitive, wholeWord }
+            );
+            if (newContent !== file.content) {
+                onReplaceContent(file.id, newContent);
+            }
+        });
+    }, [searchTerm, replaceTerm, onReplaceContent, searchResults, useRegex, caseSensitive, wholeWord]);
 
     return (
         <div className="h-full flex flex-col p-4 space-y-4">
@@ -200,6 +209,15 @@ const SearchView: React.FC<SearchViewProps> = ({ fileSystem, theme, onFileOpen }
                             className="rounded"
                         />
                         <span>Case sensitive</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            checked={wholeWord}
+                            onChange={(e) => setWholeWord(e.target.checked)}
+                            className="rounded"
+                        />
+                        <span>Match whole word</span>
                     </label>
                 </div>
             </div>

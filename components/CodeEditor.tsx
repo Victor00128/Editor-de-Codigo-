@@ -3,6 +3,12 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { File, Theme } from '../types';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import {
+  insertTabAtSelection,
+  duplicateLineAtIndex,
+  deleteLineAtIndex,
+  getLineSelectionRange
+} from '../utils/editorText';
 
 interface CodeEditorProps {
   file: File;
@@ -89,45 +95,81 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ file, onCodeChange, theme }) =>
     }
   }, []);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const { selectionStart, selectionEnd, value } = e.currentTarget;
-      const newCode = `${value.substring(0, selectionStart)}\t${value.substring(selectionEnd)}`;
-      setCode(newCode);
-      onCodeChange(file.id, newCode);
-      
-      setTimeout(() => {
-        if(textareaRef.current) {
-            textareaRef.current.selectionStart = textareaRef.current.selectionEnd = selectionStart + 1;
-        }
-      }, 0);
-    } else if (e.key === 'Enter' && showSuggestions) {
+  const handleTabKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const { selectionStart, selectionEnd, value } = e.currentTarget;
+    const { newValue, newCursorPosition } = insertTabAtSelection(value, selectionStart, selectionEnd);
+    setCode(newValue);
+    onCodeChange(file.id, newValue);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newCursorPosition;
+      }
+    }, 0);
+  };
+
+  const handleAutocompleteKeys = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && showSuggestions) {
       e.preventDefault();
       if (suggestions.length > 0) {
         const selectedSuggestion = suggestions[suggestionIndex];
         insertSuggestion(selectedSuggestion);
       }
-    } else if (e.key === 'ArrowDown' && showSuggestions) {
+      return true;
+    }
+    if (e.key === 'ArrowDown' && showSuggestions) {
       e.preventDefault();
       setSuggestionIndex(prev => (prev + 1) % suggestions.length);
-    } else if (e.key === 'ArrowUp' && showSuggestions) {
+      return true;
+    }
+    if (e.key === 'ArrowUp' && showSuggestions) {
       e.preventDefault();
       setSuggestionIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false);
-    } else if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'd') {
-        e.preventDefault();
-        duplicateLine();
-      } else if (e.key === 'k') {
-        e.preventDefault();
-        deleteLine();
-      } else if (e.key === 'l') {
-        e.preventDefault();
-        selectLine();
-      }
+      return true;
     }
+    if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      return true;
+    }
+    return false;
+  };
+
+  const handleShortcutKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(e.ctrlKey || e.metaKey)) return false;
+    if (e.key === 'd') {
+      e.preventDefault();
+      if (!textareaRef.current) return true;
+      const { selectionStart, value } = textareaRef.current;
+      const newCode = duplicateLineAtIndex(value, selectionStart);
+      setCode(newCode);
+      onCodeChange(file.id, newCode);
+      return true;
+    }
+    if (e.key === 'k') {
+      e.preventDefault();
+      if (!textareaRef.current) return true;
+      const { selectionStart, value } = textareaRef.current;
+      const newCode = deleteLineAtIndex(value, selectionStart);
+      setCode(newCode);
+      onCodeChange(file.id, newCode);
+      return true;
+    }
+    if (e.key === 'l') {
+      e.preventDefault();
+      if (!textareaRef.current) return true;
+      const { selectionStart, value } = textareaRef.current;
+      const range = getLineSelectionRange(value, selectionStart);
+      textareaRef.current.selectionStart = range.start;
+      textareaRef.current.selectionEnd = range.end;
+      return true;
+    }
+    return false;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') return handleTabKey(e);
+    if (handleAutocompleteKeys(e)) return;
+    if (handleShortcutKey(e)) return;
   };
 
   const insertSuggestion = (suggestion: string) => {

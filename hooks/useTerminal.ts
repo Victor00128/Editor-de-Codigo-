@@ -1,14 +1,23 @@
 import { useState, useCallback, useRef } from 'react';
-import { TerminalHistoryLine } from '../types';
+import { TerminalHistoryLine, FileSystemNode, File, Folder } from '../types';
 
 export interface TerminalCommand {
     name: string;
     description: string;
     usage: string;
-    execute: (args: string[], fileSystem: any, onFileOpen?: (file: any) => void) => string;
+    execute: (args: string[], fileSystem: FileSystemNode[], onFileOpen?: (file: File) => void) => string;
 }
 
-export const useTerminal = (fileSystem: any, onFileOpen?: (file: any) => void) => {
+interface FileSystemOps {
+    newItem: (parentId: string | null, type: 'file' | 'folder', name: string) => FileSystemNode | null;
+    deleteNode: (nodeId: string) => string[] | false;
+}
+
+export const useTerminal = (
+    fileSystem: FileSystemNode[],
+    onFileOpen?: (file: File) => void,
+    fsOps?: FileSystemOps
+) => {
     const [history, setHistory] = useState<TerminalHistoryLine[]>([
         { id: Date.now(), type: 'output', content: 'Welcome to Nexus Code Terminal!' },
         { id: Date.now() + 1, type: 'output', content: "Type 'help' to see available commands." },
@@ -22,10 +31,10 @@ export const useTerminal = (fileSystem: any, onFileOpen?: (file: any) => void) =
         setHistory(prev => [...prev, { id: Date.now(), type, content }]);
     }, []);
 
-    const findFileInTree = useCallback((nodes: any[], fileName: string): any => {
+    const findFileInTree = useCallback((nodes: FileSystemNode[], fileName: string): File | null => {
         for (const node of nodes) {
             if (node.type === 'file' && node.name === fileName) {
-                return node;
+                return node as File;
             }
             if (node.type === 'folder') {
                 const found = findFileInTree(node.children, fileName);
@@ -35,35 +44,32 @@ export const useTerminal = (fileSystem: any, onFileOpen?: (file: any) => void) =
         return null;
     }, []);
 
-    const findFolderInTree = useCallback((nodes: any[], folderName: string): any => {
-        for (const node of nodes) {
-            if (node.type === 'folder' && node.name === folderName) {
-                return node;
-            }
-            if (node.type === 'folder') {
-                const found = findFolderInTree(node.children, folderName);
-                if (found) return found;
-            }
+    const findFolderInChildren = (children: FileSystemNode[], name: string): Folder | null => {
+        const found = children.find(n => n.type === 'folder' && n.name === name) as Folder | undefined;
+        return found ?? null;
+    };
+
+    const getFolderByPath = useCallback((path: string): Folder | null => {
+        if (path === '/' || path === '') return null; // root
+        const segments = path.split('/').filter(Boolean);
+        let currentChildren: FileSystemNode[] = fileSystem;
+        let currentFolder: Folder | null = null;
+        for (const segment of segments) {
+            const next = findFolderInChildren(currentChildren, segment);
+            if (!next) return null;
+            currentFolder = next;
+            currentChildren = next.children;
         }
-        return null;
-    }, []);
+        return currentFolder;
+    }, [fileSystem]);
 
     const getCurrentPathContents = useCallback(() => {
         if (currentDirectory === '/') {
             return fileSystem;
         }
-        
-        const pathParts = currentDirectory.split('/').filter(Boolean);
-        let current = fileSystem;
-        
-        for (const part of pathParts) {
-            const found = findFolderInTree([current], part);
-            if (!found) return null;
-            current = found.children;
-        }
-        
-        return current;
-    }, [currentDirectory, fileSystem, findFolderInTree]);
+        const folder = getFolderByPath(currentDirectory);
+        return folder ? folder.children : null;
+    }, [currentDirectory, fileSystem, getFolderByPath]);
 
     const commands: TerminalCommand[] = [
         {
@@ -80,6 +86,7 @@ cat <file> - Show file contents
 touch <file> - Create new file
 mkdir <directory> - Create new directory
 rm <file/directory> - Remove file or directory
+open <file> - Open file in editor
 clear - Clear terminal
 echo <text> - Print text
 find <pattern> - Search for files
@@ -93,15 +100,12 @@ grep <pattern> <file> - Search in file content`;
             execute: () => {
                 const contents = getCurrentPathContents();
                 if (!contents) return 'Directory not found';
-                
                 if (contents.length === 0) return 'Directory is empty';
-                
                 const items = contents.map((item: any) => {
                     const icon = item.type === 'folder' ? '📁' : '📄';
                     const status = item.gitStatus ? ` [${item.gitStatus}]` : '';
                     return `${icon} ${item.name}${status}`;
                 });
-                
                 return items.join('\n');
             }
         },
@@ -114,28 +118,20 @@ grep <pattern> <file> - Search in file content`;
                     setCurrentDirectory('/');
                     return 'Changed to root directory';
                 }
-                
                 const target = args[0];
-                
                 if (target === '..') {
                     if (currentDirectory === '/') return 'Already at root';
                     const newPath = currentDirectory.split('/').slice(0, -1).join('/') || '/';
                     setCurrentDirectory(newPath);
                     return `Changed to ${newPath}`;
                 }
-                
-                if (target === '/') {
-                    setCurrentDirectory('/');
-                    return 'Changed to root directory';
+                const newPath = target.startsWith('/')
+                    ? (target.replace(/\/$/, '') || '/')
+                    : (currentDirectory === '/' ? `/${target}` : `${currentDirectory}/${target}`);
+                if (newPath !== '/') {
+                    const folder = getFolderByPath(newPath);
+                    if (!folder) return `Directory '${target}' not found`;
                 }
-                
-                const contents = getCurrentPathContents();
-                if (!contents) return 'Directory not found';
-                
-                const targetFolder = findFolderInTree(contents, target);
-                if (!targetFolder) return `Directory '${target}' not found`;
-                
-                const newPath = currentDirectory === '/' ? `/${target}` : `${currentDirectory}/${target}`;
                 setCurrentDirectory(newPath);
                 return `Changed to ${newPath}`;
             }
@@ -152,16 +148,12 @@ grep <pattern> <file> - Search in file content`;
             usage: 'cat <file>',
             execute: (args) => {
                 if (args.length === 0) return 'Usage: cat <file>';
-                
                 const fileName = args[0];
                 const contents = getCurrentPathContents();
                 if (!contents) return 'Directory not found';
-                
                 const file = findFileInTree(contents, fileName);
                 if (!file) return `File '${fileName}' not found`;
-                
                 if (file.type !== 'file') return `'${fileName}' is not a file`;
-                
                 return `=== ${fileName} ===\n${file.content}`;
             }
         },
@@ -171,10 +163,10 @@ grep <pattern> <file> - Search in file content`;
             usage: 'touch <file>',
             execute: (args) => {
                 if (args.length === 0) return 'Usage: touch <file>';
-                
                 const fileName = args[0];
-                // This would need to be integrated with the file system hook
-                return `File '${fileName}' would be created (use UI for now)`;
+                const parentId = currentDirectory === '/' ? null : getFolderByPath(currentDirectory)?.id ?? null;
+                const created = fsOps?.newItem(parentId, 'file', fileName);
+                return created ? `Created file '${fileName}'` : `Failed to create '${fileName}'`;
             }
         },
         {
@@ -183,10 +175,10 @@ grep <pattern> <file> - Search in file content`;
             usage: 'mkdir <directory>',
             execute: (args) => {
                 if (args.length === 0) return 'Usage: mkdir <directory>';
-                
                 const dirName = args[0];
-                // This would need to be integrated with the file system hook
-                return `Directory '${dirName}' would be created (use UI for now)`;
+                const parentId = currentDirectory === '/' ? null : getFolderByPath(currentDirectory)?.id ?? null;
+                const created = fsOps?.newItem(parentId, 'folder', dirName);
+                return created ? `Created directory '${dirName}'` : `Failed to create directory '${dirName}'`;
             }
         },
         {
@@ -195,10 +187,29 @@ grep <pattern> <file> - Search in file content`;
             usage: 'rm <file/directory>',
             execute: (args) => {
                 if (args.length === 0) return 'Usage: rm <file/directory>';
-                
                 const target = args[0];
-                // This would need to be integrated with the file system hook
-                return `'${target}' would be removed (use UI for now)`;
+                const contents = getCurrentPathContents();
+                if (!contents) return 'Directory not found';
+                const node = contents.find(n => n.name === target);
+                if (!node) return `No such file or directory: '${target}'`;
+                const res = fsOps?.deleteNode(node.id);
+                return res !== false ? `Removed '${target}'` : `Failed to remove '${target}'`;
+            }
+        },
+        {
+            name: 'open',
+            description: 'Open file in editor',
+            usage: 'open <file>',
+            execute: (args) => {
+                if (args.length === 0) return 'Usage: open <file>';
+                const fileName = args[0];
+                const contents = getCurrentPathContents();
+                if (!contents) return 'Directory not found';
+                const file = findFileInTree(contents, fileName);
+                if (!file) return `File '${fileName}' not found`;
+                if (file.type !== 'file') return `'${fileName}' is not a file`;
+                onFileOpen?.(file);
+                return `Opened '${fileName}'`;
             }
         },
         {
@@ -222,11 +233,9 @@ grep <pattern> <file> - Search in file content`;
             usage: 'find <pattern>',
             execute: (args) => {
                 if (args.length === 0) return 'Usage: find <pattern>';
-                
                 const pattern = args[0].toLowerCase();
                 const results: string[] = [];
-                
-                const searchRecursive = (nodes: any[], path: string = '') => {
+                const searchRecursive = (nodes: FileSystemNode[], path: string = '') => {
                     for (const node of nodes) {
                         const currentPath = path ? `${path}/${node.name}` : node.name;
                         if (node.name.toLowerCase().includes(pattern)) {
@@ -238,9 +247,7 @@ grep <pattern> <file> - Search in file content`;
                         }
                     }
                 };
-                
                 searchRecursive(fileSystem);
-                
                 if (results.length === 0) return `No files found matching '${pattern}'`;
                 return results.join('\n');
             }
@@ -251,22 +258,17 @@ grep <pattern> <file> - Search in file content`;
             usage: 'grep <pattern> <file>',
             execute: (args) => {
                 if (args.length < 2) return 'Usage: grep <pattern> <file>';
-                
                 const pattern = args[0].toLowerCase();
                 const fileName = args[1];
-                
                 const file = findFileInTree(fileSystem, fileName);
                 if (!file || file.type !== 'file') return `File '${fileName}' not found`;
-                
                 const lines = file.content.split('\n');
                 const matches: string[] = [];
-                
                 lines.forEach((line: string, index: number) => {
                     if (line.toLowerCase().includes(pattern)) {
                         matches.push(`${fileName}:${index + 1}: ${line}`);
                     }
                 });
-                
                 if (matches.length === 0) return `No matches found in '${fileName}'`;
                 return matches.join('\n');
             }
@@ -276,22 +278,17 @@ grep <pattern> <file> - Search in file content`;
     const executeCommand = useCallback((commandLine: string) => {
         const trimmed = commandLine.trim();
         if (!trimmed) return;
-        
         addToHistory('input', trimmed);
         commandHistory.current.push(trimmed);
         historyIndex.current = -1;
-        
         const parts = trimmed.split(' ');
         const commandName = parts[0];
         const args = parts.slice(1);
-        
         const command = commands.find(cmd => cmd.name === commandName);
-        
         if (!command) {
             addToHistory('output', `Command not found: ${commandName}. Type 'help' for available commands.`);
             return;
         }
-        
         try {
             const result = command.execute(args, fileSystem, onFileOpen);
             if (result !== '') {
@@ -324,6 +321,3 @@ grep <pattern> <file> - Search in file content`;
         addToHistory
     };
 };
-
-
-

@@ -55,29 +55,35 @@ const ActivityBarIcon: React.FC<{
   label: string;
   isActive: boolean;
   onClick: () => void;
-}> = ({ icon, label, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        title={label}
-        aria-label={label}
-        className={`w-full p-3 flex items-center justify-center transition-colors duration-200 ${
-        isActive
+}> = React.memo(({ icon, label, isActive, onClick }) => {
+    const className = React.useMemo(() => (
+        `w-full p-3 flex items-center justify-center transition-colors duration-200 ${
+            isActive
             ? 'text-white dark:text-white bg-dark-accent/30 dark:bg-dark-accent/30'
             : 'text-dark-text-alt hover:bg-dark-bg-alt/50 dark:text-dark-text-alt dark:hover:bg-dark-bg-alt'
-        }`}
-    >
-        {icon}
-    </button>
-);
+        }`
+    ), [isActive]);
+    return (
+        <button
+            onClick={onClick}
+            title={label}
+            aria-label={label}
+            className={className}
+        >
+            {icon}
+        </button>
+    );
+});
 
 // --- TERMINAL COMPONENT ---
 interface IntegratedTerminalProps {
     history: any[];
     onCommand: (command: string) => void;
+    onNavigateHistory: (dir: 'up' | 'down') => string | null;
     isTerminalOpen: boolean;
 }
 
-const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ history, onCommand, isTerminalOpen }) => {
+const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ history, onCommand, onNavigateHistory, isTerminalOpen }) => {
     const [inputValue, setInputValue] = useState('');
     const endOfHistoryRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -86,6 +92,16 @@ const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ history, onComm
         if (e.key === 'Enter' && inputValue.trim()) {
             onCommand(inputValue);
             setInputValue('');
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = onNavigateHistory('up');
+            if (prev !== null && prev !== undefined) setInputValue(prev);
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = onNavigateHistory('down');
+            if (next !== null && next !== undefined) setInputValue(next);
         }
     };
 
@@ -183,7 +199,7 @@ const App: React.FC = () => {
         executeCommand,
         navigateHistory,
         addToHistory
-    } = useTerminal(fileSystem, openFile);
+    } = useTerminal(fileSystem, openFile, { newItem: handleNewItem, deleteNode: handleDeleteNode });
 
     // --- Global Event Listeners ---
     useEffect(() => {
@@ -340,6 +356,7 @@ const App: React.FC = () => {
                                 fileSystem={fileSystem}
                                 theme={theme}
                                 onFileOpen={handleOpenFile}
+                                onReplaceContent={(fileId, newContent) => handleCodeChangeLocal(fileId, newContent)}
                             />
                         )}
                         {activeView === ActivityBarView.GIT && (
@@ -416,7 +433,7 @@ const App: React.FC = () => {
                     {/* Terminal */}
                     {isTerminalOpen && (
                         <div className={`flex-shrink-0 h-64 bg-light-bg dark:bg-dark-bg transition-all duration-300`}>
-                             <IntegratedTerminal history={terminalHistory} onCommand={executeCommand} isTerminalOpen={isTerminalOpen} />
+                             <IntegratedTerminal history={terminalHistory} onCommand={executeCommand} onNavigateHistory={navigateHistory} isTerminalOpen={isTerminalOpen} />
                         </div>
                     )}
 

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Theme } from '../types';
+import { diffLines, Change } from 'diff';
 
 interface DiffViewerProps {
   oldContent: string;
@@ -10,49 +11,21 @@ interface DiffViewerProps {
 }
 
 const generateDiff = (oldStr: string, newStr: string) => {
-    const oldLines = oldStr.split('\n');
-    const newLines = newStr.split('\n');
-    
-    if (oldLines.length === 1 && oldLines[0] === '' && oldStr.length === 0) {
-      return newLines.map(line => ({ type: 'add' as const, content: line }));
-    }
-
-    const dp = Array(oldLines.length + 1).fill(null).map(() => Array(newLines.length + 1).fill(0));
-
-    for (let i = oldLines.length - 1; i >= 0; i--) {
-        for (let j = newLines.length - 1; j >= 0; j--) {
-            if (oldLines[i] === newLines[j]) {
-                dp[i][j] = 1 + dp[i + 1][j + 1];
-            } else {
-                dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
-            }
-        }
-    }
-
+    const changes: Change[] = diffLines(oldStr, newStr);
     const diff: { type: 'common' | 'add' | 'del', content: string }[] = [];
-    let i = 0, j = 0;
-    while (i < oldLines.length && j < newLines.length) {
-        if (oldLines[i] === newLines[j]) {
-            diff.push({ type: 'common', content: oldLines[i] });
-            i++; j++;
-        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-            diff.push({ type: 'del', content: oldLines[i] });
-            i++;
-        } else {
-            diff.push({ type: 'add', content: newLines[j] });
-            j++;
-        }
-    }
-
-    while (i < oldLines.length) {
-        diff.push({ type: 'del', content: oldLines[i] });
-        i++;
-    }
-    while (j < newLines.length) {
-        diff.push({ type: 'add', content: newLines[j] });
-        j++;
-    }
-
+    changes.forEach(change => {
+        const lines = change.value.split('\n');
+        const normalized = lines[lines.length - 1] === '' ? lines.slice(0, -1) : lines;
+        normalized.forEach(line => {
+            if (change.added) {
+                diff.push({ type: 'add', content: line });
+            } else if (change.removed) {
+                diff.push({ type: 'del', content: line });
+            } else {
+                diff.push({ type: 'common', content: line });
+            }
+        });
+    });
     return diff;
 };
 
