@@ -91,7 +91,7 @@ const ExtensionsView: React.FC<ExtensionsViewProps> = ({ extensions, theme }) =>
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search extensions..."
-                        className="flex-1 px-3 py-2 bg-light-bg dark:bg-dark-bg border border-dark-accent/30 rounded-md text-dark-text dark:text-dark-text focus:outline-none"
+                        className="flex-1 px-3 py-2 bg-light-bg dark:bg-dark-bg border-2 border-dark-accent/40 rounded-md text-dark-text dark:text-dark-text focus:outline-none focus:border-dark-accent transition-colors"
                     />
                     <label className="flex items-center space-x-2 text-sm">
                         <input
@@ -105,12 +105,12 @@ const ExtensionsView: React.FC<ExtensionsViewProps> = ({ extensions, theme }) =>
                 </div>
 
                 {/* Categories */}
-                <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+                <div className="flex items-center space-x-1 overflow-x-auto pb-2">
                     {categories.map(category => (
                         <button
                             key={category.id}
                             onClick={() => setSelectedCategory(category.id)}
-                            className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                            className={`px-2 py-1 rounded-full text-xs whitespace-nowrap transition-colors flex-shrink-0 ${
                                 selectedCategory === category.id
                                     ? 'bg-dark-accent text-white'
                                     : 'bg-dark-accent/20 hover:bg-dark-accent/30 text-dark-text dark:text-dark-text'
@@ -130,61 +130,61 @@ const ExtensionsView: React.FC<ExtensionsViewProps> = ({ extensions, theme }) =>
                     return (
                         <div
                             key={extension.id}
-                            className="p-4 bg-light-bg-alt dark:bg-dark-bg-alt rounded-md border border-dark-accent/20 hover:border-dark-accent/40 transition-colors"
+                            className="p-3 bg-light-bg-alt dark:bg-dark-bg-alt rounded-md border border-dark-accent/20 hover:border-dark-accent/40 transition-colors"
                         >
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <h3 className="font-medium text-dark-text dark:text-dark-text">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2 min-w-0 flex-1">
+                                        <h3 className="font-medium text-dark-text dark:text-dark-text truncate">
                                             {extension.name}
                                         </h3>
                                         {isInstalled && (
-                                            <CheckIcon className="w-4 h-4" style={{color: '#10b981'}} />
+                                            <CheckIcon className="w-4 h-4 flex-shrink-0" style={{color: '#10b981'}} />
                                         )}
                                     </div>
                                     
-                                    <p className="text-sm text-dark-text-alt dark:text-dark-text-alt mb-2">
-                                        {extension.description}
-                                    </p>
-                                    
-                                    <div className="flex items-center space-x-4 text-xs text-dark-text-alt">
-                                        <span className="font-medium">{extension.publisher}</span>
-                                        <span>•</span>
-                                        <span>{formatInstalls(extension.installs)} installs</span>
-                                        <span>•</span>
-                                        <div className="flex items-center space-x-1">
-                                            <StarIcon className="w-3 h-3 text-yellow-500" />
-                                            <span>4.8</span>
-                                        </div>
+                                    <div className="flex items-center space-x-2 ml-2 flex-shrink-0">
+                                        {isInstalled ? (
+                                            <>
+                                                <button
+                                                    onClick={() => handleUpdate(extension.id)}
+                                                    className="p-1.5 bg-dark-accent/20 hover:bg-dark-accent/30 rounded text-dark-text dark:text-dark-text transition-colors"
+                                                    title="Update extension"
+                                                >
+                                                    <UpdateIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleUninstall(extension.id)}
+                                                    className="px-2 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-500 text-xs transition-colors"
+                                                >
+                                                    Uninstall
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleInstall(extension.id)}
+                                                className="flex items-center space-x-1 px-2 py-1 bg-dark-accent hover:bg-dark-accent/80 rounded text-white text-xs transition-colors"
+                                            >
+                                                <DownloadIcon className="w-3 h-3" />
+                                                <span>Install</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center space-x-2 ml-4">
-                                    {isInstalled ? (
-                                        <>
-                                            <button
-                                                onClick={() => handleUpdate(extension.id)}
-                                                className="p-2 bg-dark-accent/20 hover:bg-dark-accent/30 rounded text-dark-text dark:text-dark-text transition-colors"
-                                                title="Update extension"
-                                            >
-                                                <UpdateIcon className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleUninstall(extension.id)}
-                                                className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-500 text-sm transition-colors"
-                                            >
-                                                Uninstall
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleInstall(extension.id)}
-                                            className="flex items-center space-x-2 px-3 py-1 bg-dark-accent hover:bg-dark-accent/80 rounded text-white text-sm transition-colors"
-                                        >
-                                            <DownloadIcon className="w-4 h-4" />
-                                            <span>Install</span>
-                                        </button>
-                                    )}
+                                <p className="text-sm text-dark-text-alt dark:text-dark-text-alt line-clamp-2">
+                                    {extension.description}
+                                </p>
+                                
+                                <div className="flex items-center space-x-3 text-xs text-dark-text-alt overflow-hidden">
+                                    <span className="font-medium truncate">{extension.publisher}</span>
+                                    <span className="flex-shrink-0">•</span>
+                                    <span className="flex-shrink-0">{formatInstalls(extension.installs)} installs</span>
+                                    <span className="flex-shrink-0">•</span>
+                                    <div className="flex items-center space-x-1 flex-shrink-0">
+                                        <StarIcon className="w-3 h-3 text-yellow-500" />
+                                        <span>4.8</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
